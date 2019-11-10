@@ -1,0 +1,24 @@
+---
+title: "Spiny Lobsters SBC Study"
+author: "Allison Bailey"
+date: "11/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Attach required packages
+library(tidyverse)
+library(janitor)
+library(here)
+```
+
+```{r}
+# Read in csv titled "lobster_abundance_sbc_lter.csv"
+
+lobster_data <- read_csv("lobster_abundance_sbc_lter.csv")
+```
+
