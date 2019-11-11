@@ -16,6 +16,7 @@ library(janitor)
 library(here)
 library(hrbrthemes)
 library(viridis)
+library(ggthemes)
 ```
 
 ```{r}
@@ -51,24 +52,55 @@ lobster_abundance <- lobster_date %>%
     total_count = sum(count)
   ) 
 
-abundance_graph <- ggplot(data = lobster_abundance, aes(x = year, y = total_count)) 
-
-abundance_graph +
-  geom_line(aes(color = site)) +
-  geom_line(aes(color = site_2), color = "grey", size =1) +
-  facet_wrap(~site + site_2)
-  
-
-abundance_graph +
+abundance_graph <- ggplot(data = lobster_abundance, aes(x = year, y = total_count)) +
   geom_line() +
-  geom_line(aes(color = site), color = "grey", size = 1.2) +
+  facet_wrap(~site)
+  
+abundance_graph +
+  geom_line(aes(color = site), color = "grey", size = 1) +
   geom_line(aes(color = site_2), size =1) +
   facet_wrap(~site) +
   theme_grey() +
   theme(legend.position = "none", plot.title = element_text(size=14),
         panel.grid = element_blank()) +
-  ggtitle("A spaghettie chart of sites in SB County")
+  ggtitle("Total Lobsters Counted at Sites in SB County")
+  
+```
+
+```{r}
+# Results B. Visually explore lobster size distribution shifts by comparing lobster sizes in 2012 and 2018. Visually explore the size distributions for lobsters observed at the 5 different sites in 2012, and in 2018 (i.e. you will have a total of 10 size distributions shown: for each of the 5 sites, one for 2012 and one for 2018). Make a finalized graph that clearly and professionally shows community size distributions at each site in the 2 years, allowing the reader to easily interpret distribution shifts. Add a figure caption below the graph. 
+
+lobster_tidy <- lobster_date %>%
+  tidyr::uncount(count) %>%
+  filter(year == "2012" | year == "2018") %>%
+  group_by(year, site)
+
+ggplot(data = lobster_tidy, aes(x = year, y = size_mm)) +
+  geom_jitter(aes(color = site, group = year)) +
+  facet_grid(vars(site))
+
+  
+  
+```
+
+```{r}
+# Results C. Compare mean lobster sizes at MPA vs. non-MPA sites in 2012 and 2018. Here, for each year (2012 and 2018) consolidate the size observations into only two groups: MPA and non-MPA lobsters. 
+
+lobster_name <- lobster_tidy %>% 
+  mutate(mpa_affil = site) %>%
+  mutate(mpa_affil=recode(mpa_affil,IVEE = "MPA", NAPL = "MPA", AQUE = "non-MPA", MOHK = "non-MPA", CARP = "non-MPA")) %>%
+  group_by(mpa_affil, year, size_mm)
+  
+
+lobster_mean <- ggplot(lobster_name, aes(x = year, y = size_mm, group = year, fill = mpa_affil))
+
+lobster_mean +
+  geom_boxplot(alpha = .7) +
+    guides(fill = "none") +
+    theme_gray() +
+  facet_wrap(~mpa_affil)
   
 
 
 ```
+
