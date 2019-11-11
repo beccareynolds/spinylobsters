@@ -17,6 +17,7 @@ library(here)
 library(hrbrthemes)
 library(viridis)
 library(ggthemes)
+library(paletteer)
 ```
 
 ```{r}
@@ -42,30 +43,39 @@ lobster_date <- lobster_clean %>%
 
 ```
 
+
 ```{r}
 # Results A: Visually explore changes in annual lobster abundance (counts) by site. After grouping observations to find lobster counts for each year, create a finalized data visualization (no modeling/stats needed) showing changes in annual lobster abundance at the five sites over time. You should decide how to best present the data. Make your data visualization correct, clear, responsible, and professional. Details matter (e.g. is it easier to read a legend or label lines directly? How can I designate between MPA and non-MPA sites? And many more decisions!). Add a figure caption below the graph.
 
-lobster_abundance <- lobster_date %>%
-  select(year, site, count, site_2) %>%
-  group_by(year, site, site_2) %>%
+lob_abundance <- lobster_date %>%
+    select(year, site, count) %>%
+  group_by(year, site) %>%
+  summarise(
+    total_count = sum(count))
+
+lob_site2 <- lobster_date %>%
+  select(-site) %>%
+  group_by(year, site_2) %>%
   summarise(
     total_count = sum(count)
-  ) 
+  )
 
-abundance_graph <- ggplot(data = lobster_abundance, aes(x = year, y = total_count)) +
-  geom_line() +
-  facet_wrap(~site)
-  
-abundance_graph +
-  geom_line(aes(color = site), color = "grey", size = 1) +
-  geom_line(aes(color = site_2), size =1) +
-  facet_wrap(~site) +
-  theme_grey() +
-  theme(legend.position = "none", plot.title = element_text(size=14),
-        panel.grid = element_blank()) +
-  ggtitle("Total Lobsters Counted at Sites in SB County")
-  
+ggplot(lob_prac, aes(x=year, y=total_count)) +
+    geom_line(data = lob_site2, aes(group=site_2), color="grey", size=0.5, alpha=0.7) +
+    geom_line(aes(color=site), size=1.2 ) +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=14),
+      panel.grid = element_blank()
+    ) +
+    ggtitle("Total Lobsters Counted at Sites in SB County") +
+    facet_wrap(~site) +
+  scale_color_manual(values=c("#69b3a2", "#69b3a2", "darkslategrey", "#69b3a2", "darkslategrey")) +
+  labs(x = "Year",
+       y = "Lobster Count")
 ```
+
 
 ```{r}
 # Results B. Visually explore lobster size distribution shifts by comparing lobster sizes in 2012 and 2018. Visually explore the size distributions for lobsters observed at the 5 different sites in 2012, and in 2018 (i.e. you will have a total of 10 size distributions shown: for each of the 5 sites, one for 2012 and one for 2018). Make a finalized graph that clearly and professionally shows community size distributions at each site in the 2 years, allowing the reader to easily interpret distribution shifts. Add a figure caption below the graph. 
@@ -73,14 +83,21 @@ abundance_graph +
 lobster_tidy <- lobster_date %>%
   tidyr::uncount(count) %>%
   filter(year == "2012" | year == "2018") %>%
-  group_by(year, site)
+  group_by(year, site, size_mm)
 
-ggplot(data = lobster_tidy, aes(x = year, y = size_mm)) +
-  geom_jitter(aes(color = site, group = year)) +
-  facet_grid(vars(site))
+lobster_tidy2 <- lobster_date %>%
+  tidyr::uncount(count) %>%
+  filter(year == "2012" | year == "2018") %>%
+  select(-site) %>%
+  group_by(year, site_2, size_mm)
 
-  
-  
+ggplot(lobster_tidy, aes(x = size_mm)) +
+  geom_density(data = lobster_tidy2, aes(group = site_2), color = "grey", fill = "grey", alpha = 0.5) +
+  geom_density(aes(fill = site, color = site), fill = "#69b3a2", color = "#69b3a2", alpha=.4) +
+  scale_color_viridis(discrete = TRUE) +
+  theme_ipsum() +
+  facet_wrap(~site)
+
 ```
 
 ```{r}
@@ -92,15 +109,61 @@ lobster_name <- lobster_tidy %>%
   group_by(mpa_affil, year, size_mm)
   
 
-lobster_mean <- ggplot(lobster_name, aes(x = year, y = size_mm, group = year, fill = mpa_affil))
+lobster_box <- ggplot(lobster_name, aes(x = year, y = size_mm, group = year, fill = mpa_affil))
 
-lobster_mean +
+lobster_box +
   geom_boxplot(alpha = .7) +
     guides(fill = "none") +
     theme_gray() +
   facet_wrap(~mpa_affil)
   
 
+```
 
+```{r}
+lobster_summary <- lobster_name %>%
+  select(mpa_affil, size_mm, year) %>%
+  group_by(mpa_affil, year) %>%
+  summarize(
+    mean_size = mean(size_mm, na.rm = TRUE),
+    sd_size = sd(size_mm, na.rm = TRUE),
+    sample_n = n()
+  )
+
+```
+
+```{r}
+mpa_sample <- lobster_name %>%
+  filter(mpa_affil == "MPA") %>%
+  pull(size_mm)
+
+t.test(mpa_sample)
+
+nonmpa_sample <- lobster_name %>%
+  filter(mpa_affil == "non-MPA") %>%
+  pull(size_mm)
+
+t.test(nonmpa_sample)
+
+mpa_nonmpa_ttest <- t.test(mpa_sample, nonmpa_sample)
+
+mpa_nonmpa_ttest
+```
+
+```{r}
+lobster_density <- lobster_name
+
+ggplot(lobster_density, aes(x=size_mm, group = mpa_affil)) +
+    geom_density(aes(color = mpa_affil, fill = mpa_affil), alpha=0.8) +
+    ggtitle("Size of Lobsters in MPA Sites vs. Non-MPA Sites") +
+    theme_ipsum() +
+  facet_wrap(~ year) +
+  scale_color_paletteer_d(awtools, a_palette) +
+  scale_fill_paletteer_d(awtools, a_palette)
+
+
+
+  scale_color_viridis(discrete=TRUE, option="cividis") +
+  scale_fill_viridis(discrete = TRUE, option = "cividis")
 ```
 
