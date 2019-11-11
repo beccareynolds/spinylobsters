@@ -14,11 +14,61 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(janitor)
 library(here)
+library(hrbrthemes)
+library(viridis)
 ```
 
 ```{r}
 # Read in csv titled "lobster_abundance_sbc_lter.csv"
 
-lobster_data <- read_csv("lobster_abundance_sbc_lter.csv")
+lobster_data <- read_csv("lobster_abundance_sbc_lter.csv", na = "-99999")
 ```
 
+```{r}
+# Clean data variable titles using janitor clean_names()
+
+lobster_clean <- lobster_data %>%
+  clean_names()
+
+# Mutate a new column to reflect the full mdy in proper formate as well as isolating days using lubridate.
+lobster_date <- lobster_clean %>% 
+  mutate(date_new = lubridate::ymd(date)) %>%
+  mutate(day_new = lubridate::day(date)) %>%
+  select(-date) %>%
+   mutate(site_2 = site)
+
+
+
+```
+
+```{r}
+# Results A: Visually explore changes in annual lobster abundance (counts) by site. After grouping observations to find lobster counts for each year, create a finalized data visualization (no modeling/stats needed) showing changes in annual lobster abundance at the five sites over time. You should decide how to best present the data. Make your data visualization correct, clear, responsible, and professional. Details matter (e.g. is it easier to read a legend or label lines directly? How can I designate between MPA and non-MPA sites? And many more decisions!). Add a figure caption below the graph.
+
+lobster_abundance <- lobster_date %>%
+  select(year, site, count, site_2) %>%
+  group_by(year, site, site_2) %>%
+  summarise(
+    total_count = sum(count)
+  ) 
+
+abundance_graph <- ggplot(data = lobster_abundance, aes(x = year, y = total_count)) 
+
+abundance_graph +
+  geom_line(aes(color = site)) +
+  geom_line(aes(color = site_2), color = "grey", size =1) +
+  facet_wrap(~site + site_2)
+  
+
+abundance_graph +
+  geom_line() +
+  geom_line(aes(color = site), color = "grey", size = 1.2) +
+  geom_line(aes(color = site_2), size =1) +
+  facet_wrap(~site) +
+  theme_grey() +
+  theme(legend.position = "none", plot.title = element_text(size=14),
+        panel.grid = element_blank()) +
+  ggtitle("A spaghettie chart of sites in SB County")
+  
+
+
+```
