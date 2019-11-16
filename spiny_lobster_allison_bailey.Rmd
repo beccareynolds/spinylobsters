@@ -1,6 +1,6 @@
 ---
 title: "Spiny Lobsters SBC Study"
-author: "Allison Bailey"
+author: "Allison Bailey and Becca Reynolds"
 date: "11/10/2019"
 output: html_document
 editor_options: 
@@ -22,7 +22,6 @@ library(paletteer)
 library(DT)
 library(plotly)
 library(expss)
-library(mutils)
 library(kableExtra)
 ```
 
@@ -38,7 +37,7 @@ lobster_data <- read_csv("lobster_abundance_sbc_lter.csv", na = "-99999")
 lobster_clean <- lobster_data %>%
   clean_names()
 
-# Mutate a new column to reflect the full mdy in proper formate as well as isolating days using lubridate.
+# Mutate a new column to reflect the full date in proper format as well as isolating days using lubridate.
 lobster_date <- lobster_clean %>% 
   mutate(date_new = lubridate::ymd(date)) %>%
   mutate(day_new = lubridate::day(date)) %>%
@@ -84,7 +83,7 @@ lob_abund_plot <- ggplot(lob_abundance, aes(x=year, y=total_count)) +
 lob_abund_plot +  theme(
     plot.title=element_text( hjust=0.5, vjust=0.5, face='bold'))
 
-
+#Is there a way to get the year scale on graphs AQUE and CARP? Can we center lobster count and year? Let's add MPA and non-MPA site status/color designation in a figure caption below graph. 
 ```
 
 
@@ -102,7 +101,7 @@ lobster_tidy2 <- lobster_date %>%
   select(-site) %>%
   group_by(year, site_2, size_mm)
 
-lob_dense <- ggplot(lobster_tidy, aes(x = size_mm)) +
+lob_dense <- ggplot(lobster_tidy, aes(x = size_mm)) + 
   geom_density(data = lobster_tidy2, aes(group = site_2), color = "grey", fill = "grey", alpha = 0.5) +
   geom_density(aes(fill = site, color = site), alpha=.4) +
   scale_color_viridis(discrete = TRUE) +
@@ -121,6 +120,8 @@ lob_dense <- ggplot(lobster_tidy, aes(x = size_mm)) +
 lob_dense +
    theme(
     plot.title=element_text(hjust=0.5, vjust=0.5, face='bold'))
+
+#We need to fix scale or font size on axes so they're not squished/excluded. Add in figure caption that color designates MPA or non-MPA site.
 
 ```
 
