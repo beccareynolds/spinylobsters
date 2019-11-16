@@ -3,13 +3,14 @@ title: "Spiny Lobsters SBC Study"
 author: "Allison Bailey"
 date: "11/10/2019"
 output: html_document
+editor_options: 
+chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r include=FALSE}
 # Attach required packages
 library(tidyverse)
 library(janitor)
@@ -18,15 +19,20 @@ library(hrbrthemes)
 library(viridis)
 library(ggthemes)
 library(paletteer)
+library(DT)
+library(plotly)
+library(expss)
+library(mutils)
+library(kableExtra)
 ```
 
-```{r}
+```{r include=FALSE}
 # Read in csv titled "lobster_abundance_sbc_lter.csv"
 
 lobster_data <- read_csv("lobster_abundance_sbc_lter.csv", na = "-99999")
 ```
 
-```{r}
+```{r include=FALSE}
 # Clean data variable titles using janitor clean_names()
 
 lobster_clean <- lobster_data %>%
@@ -44,7 +50,7 @@ lobster_date <- lobster_clean %>%
 ```
 
 
-```{r}
+```{r echo=FALSE}
 # Results A: Visually explore changes in annual lobster abundance (counts) by site. After grouping observations to find lobster counts for each year, create a finalized data visualization (no modeling/stats needed) showing changes in annual lobster abundance at the five sites over time. You should decide how to best present the data. Make your data visualization correct, clear, responsible, and professional. Details matter (e.g. is it easier to read a legend or label lines directly? How can I designate between MPA and non-MPA sites? And many more decisions!). Add a figure caption below the graph.
 
 lob_abundance <- lobster_date %>%
@@ -60,24 +66,29 @@ lob_site2 <- lobster_date %>%
     total_count = sum(count)
   )
 
-ggplot(lob_prac, aes(x=year, y=total_count)) +
+lob_abund_plot <- ggplot(lob_abundance, aes(x=year, y=total_count)) +
     geom_line(data = lob_site2, aes(group=site_2), color="grey", size=0.5, alpha=0.7) +
     geom_line(aes(color=site), size=1.2 ) +
     theme_ipsum() +
     theme(
       legend.position="none",
-      plot.title = element_text(size=14),
-      panel.grid = element_blank()
+      plot.title = element_text(size=14)
     ) +
     ggtitle("Total Lobsters Counted at Sites in SB County") +
     facet_wrap(~site) +
   scale_color_manual(values=c("#69b3a2", "#69b3a2", "darkslategrey", "#69b3a2", "darkslategrey")) +
   labs(x = "Year",
        y = "Lobster Count")
+  
+
+lob_abund_plot +  theme(
+    plot.title=element_text( hjust=0.5, vjust=0.5, face='bold'))
+
+
 ```
 
 
-```{r}
+```{r echo=FALSE}
 # Results B. Visually explore lobster size distribution shifts by comparing lobster sizes in 2012 and 2018. Visually explore the size distributions for lobsters observed at the 5 different sites in 2012, and in 2018 (i.e. you will have a total of 10 size distributions shown: for each of the 5 sites, one for 2012 and one for 2018). Make a finalized graph that clearly and professionally shows community size distributions at each site in the 2 years, allowing the reader to easily interpret distribution shifts. Add a figure caption below the graph. 
 
 lobster_tidy <- lobster_date %>%
@@ -91,36 +102,55 @@ lobster_tidy2 <- lobster_date %>%
   select(-site) %>%
   group_by(year, site_2, size_mm)
 
-ggplot(lobster_tidy, aes(x = size_mm)) +
+lob_dense <- ggplot(lobster_tidy, aes(x = size_mm)) +
   geom_density(data = lobster_tidy2, aes(group = site_2), color = "grey", fill = "grey", alpha = 0.5) +
-  geom_density(aes(fill = site, color = site), fill = "#69b3a2", color = "#69b3a2", alpha=.4) +
+  geom_density(aes(fill = site, color = site), alpha=.4) +
   scale_color_viridis(discrete = TRUE) +
   theme_ipsum() +
-  facet_wrap(~site)
+  facet_grid(site ~ year) +
+  labs(x = "Size (mm)",
+       y = "Density") +
+   ggtitle("Lobster Size by Site: 2012 and 2018 Comparison") +
+  scale_color_manual(values=c("#69b3a2", "#69b3a2", "darkslategrey", "#69b3a2", "darkslategrey")) +
+  scale_fill_manual(values=c("#69b3a2", "#69b3a2", "darkslategrey", "#69b3a2", "darkslategrey")) +
+  theme(
+      legend.position="none",
+      plot.title = element_text(size=14)
+    ) 
+
+lob_dense +
+   theme(
+    plot.title=element_text(hjust=0.5, vjust=0.5, face='bold'))
 
 ```
 
-```{r}
+```{r echo=FALSE}
 # Results C. Compare mean lobster sizes at MPA vs. non-MPA sites in 2012 and 2018. Here, for each year (2012 and 2018) consolidate the size observations into only two groups: MPA and non-MPA lobsters. 
 
 lobster_name <- lobster_tidy %>% 
-  mutate(mpa_affil = site) %>%
-  mutate(mpa_affil=recode(mpa_affil,IVEE = "MPA", NAPL = "MPA", AQUE = "non-MPA", MOHK = "non-MPA", CARP = "non-MPA")) %>%
+  mutate(mpa_affil = case_when(site %in% c("CARP", "MOHK", "AQUE") ~ "non-MPA",
+                               TRUE ~ "MPA")) %>%
   group_by(mpa_affil, year, size_mm)
   
 
-lobster_box <- ggplot(lobster_name, aes(x = year, y = size_mm, group = year, fill = mpa_affil))
+lobster_box <- ggplot(lobster_name, aes(x = mpa_affil, y = size_mm, group = mpa_affil, fill = mpa_affil))
 
-lobster_box +
+lob_boxplot <- lobster_box +
   geom_boxplot(alpha = .7) +
     guides(fill = "none") +
-    theme_gray() +
-  facet_wrap(~mpa_affil)
+    theme_ipsum() +
+  facet_wrap(~year) +
+   scale_color_paletteer_d(awtools, a_palette) +
+  scale_fill_paletteer_d(awtools, a_palette) +
+    labs(x = "MPA Affiliation",
+       y = "Mean Size (mm)")
   
-
+lob_boxplot +
+   theme(
+    plot.title=element_text( hjust=0.5, vjust=0.5, face='bold'))
 ```
 
-```{r}
+```{r echo=FALSE}
 lobster_summary <- lobster_name %>%
   select(mpa_affil, size_mm, year) %>%
   group_by(mpa_affil, year) %>%
@@ -130,9 +160,35 @@ lobster_summary <- lobster_name %>%
     sample_n = n()
   )
 
+datatable(lobster_summary)
+
 ```
 
-```{r}
+```{r include=FALSE}
+# Sample size (MPA vs non-MPA):
+mpa_filter <- lobster_name %>%
+  filter(mpa_affil == "MPA")
+
+nonmpa_filter <- lobster_name %>%
+  filter(mpa_affil == "non-MPA")
+
+n_mpa <- sum(!is.na(mpa_filter$size_mm))
+n_nonmpa <- sum(!is.na(nonmpa_filter$size_mm))
+
+# Means (MPA v. nonMPA):
+mean_mpa <- mean(mpa_filter$size_mm, na.rm = TRUE)
+mean_nonmpa <- mean(nonmpa_filter$size_mm, na.rm = TRUE)
+
+# Medians (MPA v. non MPA):
+median_mpa <- median(mpa_filter$size_mm, na.rm = TRUE)
+median_nonmpa <- median(nonmpa_filter$size_mm, na.rm = TRUE)
+
+# Standard deviations (immediate v. 2 min flushing):
+sd_mpa <- sd(mpa_filter$size_mm, na.rm = TRUE)
+sd_nonmpa <- sd(nonmpa_filter$size_mm, na.rm = TRUE)
+```
+
+```{r include=FALSE}
 mpa_sample <- lobster_name %>%
   filter(mpa_affil == "MPA") %>%
   pull(size_mm)
@@ -148,22 +204,59 @@ t.test(nonmpa_sample)
 mpa_nonmpa_ttest <- t.test(mpa_sample, nonmpa_sample)
 
 mpa_nonmpa_ttest
-```
 
-```{r}
+
+```
+"Mean lobster sizes (mm) measured at the protected site (MPAs) samples (`r round(mean_mpa, 2)` $\pm$ `r round(sd_mpa, 2)`, n = `r n_mpa`) differed significantly from non protected sites (non-MPAs). (`r round(mean_nonmpa, 2)` $\pm$ `r round(sd_nonmpa, 2)`, n = `r n_nonmpa`) by a paired two-sample t-test (t(`r round(mpa_nonmpa_ttest$parameter, 2)`) = `r round(mpa_nonmpa_ttest$statistic, 2)`, *p* < 7.708e-11)."
+```{r echo=FALSE}
 lobster_density <- lobster_name
 
-ggplot(lobster_density, aes(x=size_mm, group = mpa_affil)) +
+lob_affil <- ggplot(lobster_density, aes(x=size_mm, group = mpa_affil)) +
     geom_density(aes(color = mpa_affil, fill = mpa_affil), alpha=0.8) +
-    ggtitle("Size of Lobsters in MPA Sites vs. Non-MPA Sites") +
+    ggtitle("Size of Lobsters at MPA Sites vs. Non-MPA Sites") +
     theme_ipsum() +
   facet_wrap(~ year) +
   scale_color_paletteer_d(awtools, a_palette) +
   scale_fill_paletteer_d(awtools, a_palette)
 
+lob_affil +
+   theme(
+    plot.title=element_text( hjust=0.5, vjust=0.5, face='bold'))
 
+```
 
-  scale_color_viridis(discrete=TRUE, option="cividis") +
-  scale_fill_viridis(discrete = TRUE, option = "cividis")
+```{r include=FALSE}
+# Or we could use the existing `effsize::cohen.d()` function instead of creating our own. Let's use it here to check that results match for our function and the `cohen.d` function: 
+
+lob_cohen <- effsize::cohen.d(mpa_sample, nonmpa_sample, na.rm = TRUE)
+
+# Then in our report, we would want to include the actual means of the samples, and the effect size, possibly the confidence interval for each, and then the *least interesting thing* shoud be the statement of significance associate with our t-test.
+
+lob_kable <- lobster_name %>% 
+  kable(col.names = c("Name", 
+                     "Value", 
+                     "Volume (cubic feet)",
+                     "mpa")
+        ) %>% 
+  kable_styling(bootstrap_options = "striped", 
+                full_width = F,
+                position = "left"
+                ) %>% 
+  add_header_above(c("Black cherry tree metrics" = 3))
+
+```
+
+```{r echo=FALSE}
+lobster_ysite <- lobster_date %>%
+  count(year, site)
+
+lobster_ysite
+
+lob_heat <- ggplot(data = lobster_ysite, aes(x = year, y = site)) +
+  geom_tile(aes(fill = n)) +
+  scale_fill_viridis(discrete=FALSE, option="cividis")
+
+lob_heat
+        
 ```
 
